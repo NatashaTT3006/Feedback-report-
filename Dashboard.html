@@ -1,0 +1,1330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Shift Energy – Feedback Dashboard</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --navy:   #1a365d;
+      --navy2:  #2b4c7e;
+      --green:  #38a169;
+      --green2: #276749;
+      --blue:   #3182ce;
+      --blue2:  #2b6cb0;
+      --amber:  #d69e2e;
+      --amber2: #975a16;
+      --red:    #e53e3e;
+      --bg:     #f0f4f8;
+      --white:  #ffffff;
+      --border: #e2e8f0;
+      --text:   #1a202c;
+      --muted:  #718096;
+      --sidebar-w: 220px;
+    }
+
+    body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); display: flex; height: 100vh; overflow: hidden; }
+
+    /* ── Hamburger (mobile only) ── */
+    .hamburger {
+      display: none;
+      flex-direction: column;
+      gap: 5px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 4px 6px;
+      border-radius: 6px;
+    }
+    .hamburger span { display: block; width: 22px; height: 2px; background: var(--navy); border-radius: 2px; transition: all 0.25s; }
+
+    /* Sidebar overlay (mobile) */
+    .sidebar-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.45);
+      z-index: 998;
+    }
+    .sidebar-overlay.open { display: block; }
+
+    /* ── Sidebar ── */
+    .sidebar {
+      width: var(--sidebar-w);
+      background: var(--navy);
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      padding: 0 0 20px;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 24px 18px 20px;
+      border-bottom: 1px solid rgba(255,255,255,0.12);
+      margin-bottom: 12px;
+    }
+
+    .logo-icon { font-size: 26px; }
+    .logo-name { font-size: 14px; font-weight: 700; line-height: 1.2; }
+    .logo-sub  { font-size: 11px; opacity: 0.65; }
+
+    nav { flex: 1; padding: 0 10px; }
+
+    .nav-btn {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+      padding: 10px 12px;
+      border: none;
+      background: transparent;
+      color: rgba(255,255,255,0.75);
+      font-size: 14px;
+      font-weight: 500;
+      border-radius: 8px;
+      cursor: pointer;
+      text-align: left;
+      margin-bottom: 4px;
+      transition: background 0.15s, color 0.15s;
+    }
+
+    .nav-btn:hover  { background: rgba(255,255,255,0.1); color: #fff; }
+    .nav-btn.active { background: rgba(255,255,255,0.18); color: #fff; font-weight: 700; }
+
+    .nav-btn .icon { font-size: 16px; width: 20px; text-align: center; }
+
+    .sidebar-footer {
+      padding: 14px 18px 0;
+      font-size: 11px;
+      opacity: 0.45;
+      border-top: 1px solid rgba(255,255,255,0.1);
+      margin: 0 10px;
+      padding-top: 14px;
+    }
+
+    /* ── Main ── */
+    .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+    .topbar {
+      background: var(--white);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 28px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+
+    .topbar h1 { font-size: 20px; font-weight: 700; color: var(--navy); }
+    .topbar-date { font-size: 13px; color: var(--muted); }
+
+    .content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 28px;
+    }
+
+    /* ── Cards ── */
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+
+    .stat-card {
+      background: var(--white);
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+      border-left: 4px solid;
+    }
+
+    .stat-card.navy  { border-color: var(--navy); }
+    .stat-card.green { border-color: var(--green); }
+    .stat-card.blue  { border-color: var(--blue); }
+    .stat-card.amber { border-color: var(--amber); }
+
+    .stat-label { font-size: 12px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; margin-bottom: 6px; }
+    .stat-value { font-size: 32px; font-weight: 800; }
+    .stat-card.navy  .stat-value { color: var(--navy); }
+    .stat-card.green .stat-value { color: var(--green2); }
+    .stat-card.blue  .stat-value { color: var(--blue2); }
+    .stat-card.amber .stat-value { color: var(--amber2); }
+
+    /* ── Section header ── */
+    .section-hdr {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+
+    .section-hdr h2 { font-size: 16px; font-weight: 700; color: var(--navy); }
+
+    /* ── Panel ── */
+    .panel {
+      background: var(--white);
+      border-radius: 12px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+      margin-bottom: 24px;
+      overflow: hidden;
+    }
+
+    .panel-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      font-weight: 700;
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--border);
+      color: var(--navy);
+    }
+
+    /* ── Submission list ── */
+    .sub-item {
+      border-bottom: 1px solid var(--border);
+    }
+
+    .sub-item:last-child { border-bottom: none; }
+
+    .sub-header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 14px 20px;
+      cursor: pointer;
+      transition: background 0.12s;
+    }
+
+    .sub-header:hover { background: #f7fafc; }
+
+    .sub-date { font-size: 13px; font-weight: 700; color: var(--navy); min-width: 120px; }
+    .sub-pills { display: flex; gap: 6px; flex: 1; flex-wrap: wrap; }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 20px;
+    }
+
+    .pill-green { background: #c6f6d5; color: var(--green2); }
+    .pill-blue  { background: #bee3f8; color: var(--blue2); }
+    .pill-amber { background: #fefcbf; color: var(--amber2); }
+
+    .sub-expand { font-size: 18px; color: var(--muted); transition: transform 0.2s; }
+    .sub-expand.open { transform: rotate(90deg); }
+
+    .sub-body {
+      display: none;
+      padding: 0 20px 16px;
+      border-top: 1px solid var(--border);
+    }
+
+    .sub-body.open { display: block; }
+
+    /* Task rows in submission detail */
+    .detail-section { margin-top: 16px; }
+
+    .detail-section-title {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      margin-bottom: 8px;
+      padding-bottom: 6px;
+      border-bottom: 2px solid;
+    }
+
+    .detail-section.ds-completed .detail-section-title { color: var(--green2); border-color: var(--green); }
+    .detail-section.ds-inprogress .detail-section-title { color: var(--blue2); border-color: var(--blue); }
+    .detail-section.ds-awaiting .detail-section-title { color: var(--amber2); border-color: var(--amber); }
+
+    .detail-task {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .detail-task:last-child { border-bottom: none; }
+
+    .detail-task-top {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      font-size: 13px;
+    }
+
+    .detail-check { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+    .detail-check.done { color: var(--green); }
+    .detail-check.undone { color: #cbd5e0; }
+
+    .detail-task-text {
+      flex: 1;
+      line-height: 1.5;
+      outline: none;
+      border-radius: 4px;
+      padding: 1px 4px;
+      margin: -1px -4px;
+      cursor: text;
+      transition: background 0.12s, box-shadow 0.12s;
+    }
+
+    .detail-task-text:hover  { background: rgba(0,0,0,0.04); }
+    .detail-task-text:focus  { background: #fff; box-shadow: 0 0 0 2px #3182ce55; }
+    .detail-task-text.struck { text-decoration: line-through; color: var(--muted); }
+
+    .detail-comment-wrap { padding-left: 26px; }
+
+    .detail-comment-wrap label { font-size: 11px; color: var(--muted); font-weight: 600; display: block; margin-bottom: 3px; }
+
+    .detail-comment-wrap textarea {
+      width: 100%;
+      padding: 6px 10px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 13px;
+      font-family: inherit;
+      resize: vertical;
+      min-height: 48px;
+      background: #f7fafc;
+      color: var(--text);
+    }
+
+    .detail-comment-wrap textarea:focus { outline: none; border-color: var(--blue); background: #fff; }
+
+    .save-comments-btn {
+      margin-top: 10px;
+      padding: 7px 18px;
+      background: var(--navy);
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .save-comments-btn:hover { background: var(--navy2); }
+
+    .delete-sub-btn {
+      margin-top: 10px;
+      margin-left: 8px;
+      padding: 7px 14px;
+      background: #fff;
+      color: var(--red);
+      border: 1.5px solid var(--red);
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .delete-sub-btn:hover { background: #fff5f5; }
+
+    .view-pdf-btn {
+      padding: 7px 16px;
+      background: #fff;
+      color: var(--green2);
+      border: 1.5px solid var(--green);
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .view-pdf-btn:hover { background: #f0fff4; }
+
+    .btn-edit-sub {
+      padding: 7px 16px;
+      background: var(--navy);
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .btn-edit-sub:hover { background: var(--navy2); }
+
+    .btn-save-edit {
+      padding: 7px 18px;
+      background: var(--green);
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .btn-save-edit:hover { background: var(--green2); }
+
+    .btn-cancel-edit {
+      padding: 7px 14px;
+      background: #fff;
+      color: var(--muted);
+      border: 1.5px solid var(--border);
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .btn-cancel-edit:hover { background: var(--bg); }
+
+    .btn-open-form {
+      padding: 7px 16px;
+      background: #fff;
+      color: var(--blue2);
+      border: 1.5px solid var(--blue);
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .btn-open-form:hover { background: #ebf8ff; }
+
+    /* Action button row */
+    .sub-actions {
+      margin-top: 14px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+
+    /* View / Edit mode toggling */
+    .sub-item[data-mode="view"]  .edit-only  { display: none !important; }
+    .sub-item[data-mode="view"]  .view-only  { display: block; }
+    .sub-item[data-mode="edit"]  .view-only  { display: none !important; }
+    .sub-item[data-mode="edit"]  .edit-only  { display: block; }
+
+    /* Inline comment display (view mode) */
+    .comment-display {
+      margin-top: 4px;
+      padding: 5px 10px;
+      background: #f7fafc;
+      border-left: 3px solid var(--border);
+      border-radius: 4px;
+      font-size: 12px;
+      color: var(--muted);
+      font-style: italic;
+    }
+
+    /* Edit mode highlight */
+    .sub-item[data-mode="edit"] { background: #fffde7; }
+    .edit-banner {
+      display: none;
+      background: #fefcbf;
+      border-bottom: 1px solid #f6e05e;
+      padding: 6px 20px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #744210;
+    }
+    .sub-item[data-mode="edit"] .edit-banner { display: block; }
+
+    .pdf-badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      font-size: 11px; font-weight: 600; padding: 2px 8px;
+      border-radius: 20px; background: #c6f6d5; color: var(--green2);
+    }
+
+    .form-save-badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      font-size: 11px; font-weight: 600; padding: 2px 8px;
+      border-radius: 20px; background: #bee3f8; color: var(--blue2);
+    }
+
+    .template-badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      font-size: 11px; font-weight: 600; padding: 2px 8px;
+      border-radius: 20px; background: #e9d8fd; color: #553c9a;
+    }
+
+    .sub-item.is-template  { border-left: 3px solid #805ad5; }
+    .sub-item.is-form-save { border-left: 3px solid var(--blue); }
+
+    /* ── Template editor ── */
+    .tmpl-section {
+      background: var(--white);
+      border-radius: 12px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+      margin-bottom: 20px;
+      overflow: hidden;
+    }
+
+    .tmpl-section-hdr {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 14px 20px;
+      font-size: 15px;
+      font-weight: 700;
+      border-bottom: 2px solid;
+    }
+
+    .tmpl-section-hdr.completed { color: var(--green2); border-color: var(--green); background: #f0fff4; }
+    .tmpl-section-hdr.inprogress { color: var(--blue2); border-color: var(--blue); background: #ebf8ff; }
+    .tmpl-section-hdr.awaiting  { color: var(--amber2); border-color: var(--amber); background: #fffff0; }
+
+    .tmpl-tasks { padding: 12px 20px; }
+
+    .tmpl-task-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .tmpl-task-input {
+      flex: 1;
+      padding: 8px 10px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 13px;
+      font-family: inherit;
+      background: #f7fafc;
+      color: var(--text);
+    }
+
+    .tmpl-task-input:focus { outline: none; border-color: var(--blue); background: #fff; }
+
+    .btn-del-task {
+      background: none;
+      border: none;
+      color: #e53e3e;
+      font-size: 18px;
+      cursor: pointer;
+      line-height: 1;
+      padding: 4px 6px;
+      border-radius: 4px;
+      flex-shrink: 0;
+    }
+
+    .btn-del-task:hover { background: #fff5f5; }
+
+    .btn-add-task {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      border: 1.5px dashed #cbd5e0;
+      background: transparent;
+      border-radius: 6px;
+      font-size: 13px;
+      color: var(--muted);
+      cursor: pointer;
+      width: 100%;
+      margin-top: 4px;
+      transition: border-color 0.15s, color 0.15s;
+    }
+
+    .btn-add-task:hover { border-color: var(--blue); color: var(--blue); }
+
+    .tmpl-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 8px;
+      flex-wrap: wrap;
+    }
+
+    .btn-save-tmpl {
+      padding: 11px 28px;
+      background: var(--navy);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .btn-save-tmpl:hover { background: var(--navy2); }
+
+    .btn-reset-tmpl {
+      padding: 11px 20px;
+      background: #fff;
+      color: var(--muted);
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .btn-reset-tmpl:hover { border-color: #a0aec0; color: var(--text); }
+
+    .btn-open-form {
+      padding: 11px 22px;
+      background: #fff;
+      color: var(--green2);
+      border: 2px solid var(--green);
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .btn-open-form:hover { background: #f0fff4; }
+
+    /* ── Empty state ── */
+    .empty-state {
+      text-align: center;
+      padding: 48px 20px;
+      color: var(--muted);
+    }
+
+    .empty-state .empty-icon { font-size: 40px; margin-bottom: 12px; }
+    .empty-state p { font-size: 14px; }
+
+    /* ── Toast ── */
+    .toast {
+      display: none;
+      position: fixed;
+      bottom: 28px;
+      right: 28px;
+      background: var(--navy);
+      color: #fff;
+      padding: 12px 22px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+      z-index: 9999;
+    }
+
+    /* ── Mobile responsive ── */
+    @media (max-width: 768px) {
+
+      body { overflow: auto; height: auto; flex-direction: column; }
+
+      /* Sidebar slides in as overlay */
+      .sidebar {
+        position: fixed;
+        top: 0; left: 0; bottom: 0;
+        width: 240px;
+        transform: translateX(-100%);
+        transition: transform 0.28s ease;
+        z-index: 999;
+        overflow-y: auto;
+      }
+      .sidebar.open { transform: translateX(0); }
+
+      .main { width: 100%; min-height: 100vh; overflow: visible; }
+
+      /* Topbar */
+      .topbar { padding: 12px 16px; position: sticky; top: 0; z-index: 100; }
+      .topbar h1 { font-size: 17px; }
+      .topbar-date { display: none; }
+      .hamburger { display: flex; }
+
+      /* Content */
+      .content { padding: 16px; overflow: visible; flex: none; }
+
+      /* Stats: 2 columns */
+      .stat-grid { grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 18px; }
+      .stat-card { padding: 14px; }
+      .stat-value { font-size: 26px; }
+      .stat-label { font-size: 11px; }
+
+      /* Submissions */
+      .sub-header { padding: 12px 14px; gap: 8px; flex-wrap: wrap; }
+      .sub-date { font-size: 12px; min-width: unset; width: 100%; }
+      .sub-pills { width: 100%; }
+      .sub-body { padding: 0 14px 12px; }
+
+      .detail-task-top { font-size: 12px; }
+
+      /* Action buttons stack */
+      .sub-body > div[style] {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      .save-comments-btn,
+      .view-pdf-btn,
+      .delete-sub-btn { margin: 0; font-size: 13px; padding: 8px 14px; }
+
+      /* Template editor */
+      .tmpl-section-hdr { font-size: 13px; padding: 12px 14px; }
+      .tmpl-tasks { padding: 10px 14px; }
+      .tmpl-actions { flex-direction: column; gap: 8px; }
+      .btn-save-tmpl, .btn-open-form, .btn-reset-tmpl { width: 100%; padding: 12px; }
+
+      /* Recent rows stack */
+      .recent-row { flex-wrap: wrap; gap: 6px; padding: 10px 14px; }
+      .recent-date { min-width: unset; width: 100%; font-size: 12px; }
+
+      /* Panel title */
+      .panel-title { padding: 12px 14px; font-size: 13px; }
+
+      /* Section hdr */
+      .section-hdr h2 { font-size: 14px; }
+    }
+
+    @media (max-width: 400px) {
+      .stat-grid { grid-template-columns: 1fr; }
+      .pill { font-size: 10px; }
+    }
+
+    /* ── Recent list (overview) ── */
+    .recent-row {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 12px 20px;
+      border-bottom: 1px solid var(--border);
+      font-size: 13px;
+    }
+
+    .recent-row:last-child { border-bottom: none; }
+    .recent-date { color: var(--navy); font-weight: 600; min-width: 140px; }
+    .recent-pills { display: flex; gap: 6px; flex-wrap: wrap; flex: 1; }
+    .recent-link { color: var(--blue); cursor: pointer; font-weight: 600; text-decoration: none; white-space: nowrap; font-size: 12px; }
+    .recent-link:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+
+<!-- ════════════════════════ SIDEBAR ════════════════════════ -->
+<aside class="sidebar">
+  <div class="logo">
+    <span class="logo-icon">⚡</span>
+    <div>
+      <div class="logo-name">Shift Energy</div>
+      <div class="logo-sub">Feedback Dashboard</div>
+    </div>
+  </div>
+  <nav>
+    <button class="nav-btn active" id="nav-overview"    onclick="showView('overview')">
+      <span class="icon">📊</span> Overview
+    </button>
+    <button class="nav-btn"        id="nav-submissions" onclick="showView('submissions')">
+      <span class="icon">📋</span> Submissions
+    </button>
+    <button class="nav-btn"        id="nav-template"    onclick="showView('template')">
+      <span class="icon">✏️</span> Template Editor
+    </button>
+  </nav>
+  <div class="sidebar-footer">Shift Energy Solutions<br/>natasha@shiftenergysolutions.com</div>
+</aside>
+
+<!-- ════════════════════════ MAIN ════════════════════════ -->
+<div class="main">
+  <header class="topbar">
+    <button class="hamburger" id="hamburgerBtn" onclick="openSidebar()" aria-label="Open menu">
+      <span></span><span></span><span></span>
+    </button>
+    <h1 id="view-title">Overview</h1>
+    <span class="topbar-date" id="topbar-date"></span>
+  </header>
+  <div class="content" id="content"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════
+//  DATA
+// ═══════════════════════════════════════════
+
+const DEFAULT_TEMPLATE = {
+  sections: [
+    {
+      id: 'completed', type: 'completed', label: 'Completed Tasks', icon: '✓',
+      tasks: [
+        'Fuel card Investec – Completed and Sent',
+        'SCA – INV-SES-009 – Email missing Timesheet breakdown and updated supporting doc',
+        'SCA – Updated invoices and Timesheet breakdowns May uploaded to SharePoint',
+        'Meeting confirmed with Xact for Thursday – Prep completed',
+        'Arrange meeting with Trisha re admin tasks – Discussed; Trisha to share additional points for Zeno Monday meeting',
+        'Bank links XERO – Main accounts complete',
+        'Updated Shift cashflow with updated invoices and expenses',
+        'Cotton Crew orders for new clients – Discussion with Marcelle completed'
+      ]
+    },
+    {
+      id: 'inprogress', type: 'inprogress', label: 'In-Progress Tasks', icon: '→',
+      tasks: [
+        'Review Expense sheet with Trisha & prep payment load for ZG – Completed; awaiting comms re transfer of funds issue from Trisha',
+        'Contact Michael Rusby – Compile requested info for Zeno income for Michael',
+        'Creation of 3 x loan accounts in XERO',
+        'Allocations of transactions in XERO – Ongoing task',
+        'Transaction list – Bank account sorting and discussing with Trisha – Ongoing task',
+        'Import all invoices in XERO – Ongoing task',
+        'Knightbridge new bank detail letter query – Took over from Trisha; communicating updated info directly'
+      ]
+    },
+    {
+      id: 'awaiting', type: 'awaiting', label: 'Awaiting Feedback / Approval', icon: '⏳',
+      tasks: [
+        'SCA – INV-SES-0013 – Sent; awaiting feedback from Salman',
+        'Beneficiary enquiry awaiting feedback – Matthew assisting with request',
+        'Request contact info for franchise & Corp for SOP – Corp emails received; awaiting franchise emails',
+        'SOP doc update x 2 – The Cotton Crew – Awaiting Zeno update on doc',
+        'Printer pricing for 19 Beach – Incredible Connection or Makro (priced at R5,500) – Awaiting Zeno approval & payment',
+        'Courier Guy integration with Shopify for Roxanne – Wayne started integration per Marcelle; awaiting further instruction from Wayne',
+        'Meeting request with Dallen (accounts@zar) – Discuss missing invoices, queries and additional information',
+        'Vehicle payment (loan repayment / TAX obligations) – Awaiting Labia and Matthew response',
+        'Missing Investec account from Dash (Zeno personal account) – Awaiting Matthew feedback'
+      ]
+    }
+  ]
+};
+
+function getTemplate()     { try { return JSON.parse(localStorage.getItem('ses_template')) || DEFAULT_TEMPLATE; } catch { return DEFAULT_TEMPLATE; } }
+function saveTemplate(t)   { localStorage.setItem('ses_template', JSON.stringify(t)); }
+function getSubmissions()  { try { return JSON.parse(localStorage.getItem('ses_submissions')) || []; } catch { return []; } }
+function saveSubmissions(s){ localStorage.setItem('ses_submissions', JSON.stringify(s)); }
+
+// ═══════════════════════════════════════════
+//  SIDEBAR (mobile)
+// ═══════════════════════════════════════════
+
+function openSidebar() {
+  document.querySelector('.sidebar').classList.add('open');
+  document.getElementById('sidebarOverlay').classList.add('open');
+}
+
+function closeSidebar() {
+  document.querySelector('.sidebar').classList.remove('open');
+  document.getElementById('sidebarOverlay').classList.remove('open');
+}
+
+// ═══════════════════════════════════════════
+//  NAV
+// ═══════════════════════════════════════════
+
+let currentView = 'overview';
+
+function showView(view) {
+  currentView = view;
+  ['overview','submissions','template'].forEach(v => {
+    document.getElementById('nav-' + v).classList.toggle('active', v === view);
+  });
+  const titles = { overview: 'Overview', submissions: 'Submissions', template: 'Template Editor' };
+  document.getElementById('view-title').textContent = titles[view];
+  const renders = { overview: renderOverview, submissions: renderSubmissions, template: renderTemplate };
+  renders[view]();
+  closeSidebar(); // close drawer on mobile after nav
+}
+
+// ═══════════════════════════════════════════
+//  OVERVIEW
+// ═══════════════════════════════════════════
+
+function renderOverview() {
+  const subs = getSubmissions();
+  const total = subs.length;
+
+  let totalDone = 0, totalProgress = 0, totalAwaiting = 0;
+  subs.forEach(s => {
+    s.sections.forEach(sec => {
+      sec.tasks.forEach(t => {
+        if (sec.type === 'completed' || t.checked) totalDone++;
+        else if (sec.type === 'inprogress') totalProgress++;
+        else if (sec.type === 'awaiting') totalAwaiting++;
+      });
+    });
+  });
+
+  const recent = [...subs].reverse().slice(0, 5);
+
+  document.getElementById('content').innerHTML = `
+    <div class="stat-grid">
+      <div class="stat-card navy">
+        <div class="stat-label">Total Submissions</div>
+        <div class="stat-value">${total}</div>
+      </div>
+      <div class="stat-card green">
+        <div class="stat-label">Tasks Completed</div>
+        <div class="stat-value">${totalDone}</div>
+      </div>
+      <div class="stat-card blue">
+        <div class="stat-label">In Progress</div>
+        <div class="stat-value">${totalProgress}</div>
+      </div>
+      <div class="stat-card amber">
+        <div class="stat-label">Awaiting Feedback</div>
+        <div class="stat-value">${totalAwaiting}</div>
+      </div>
+    </div>
+
+    <div class="section-hdr">
+      <h2>Recent Submissions</h2>
+      <span style="font-size:13px;color:var(--muted)">${total} total</span>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">📋 Latest Activity</div>
+      ${recent.length === 0
+        ? `<div class="empty-state"><div class="empty-icon">📭</div><p>No submissions yet.<br/>Submit a feedback form to see it here.</p></div>`
+        : recent.map(s => recentRow(s)).join('')
+      }
+    </div>
+  `;
+}
+
+function recentRow(s) {
+  const d = new Date(s.submittedAt);
+  const dateStr = d.toLocaleDateString('en-ZA', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
+  const pills = pillsFor(s);
+  return `
+    <div class="recent-row">
+      <span class="recent-date">📅 ${dateStr}</span>
+      <span class="recent-pills">${pills}</span>
+      <a class="recent-link" onclick="showView('submissions')">View →</a>
+    </div>`;
+}
+
+function pillsFor(s) {
+  let done = 0, prog = 0, wait = 0;
+  s.sections.forEach(sec => {
+    sec.tasks.forEach(t => {
+      if (t.checked || sec.type === 'completed') done++;
+      else if (sec.type === 'inprogress') prog++;
+      else wait++;
+    });
+  });
+  return `
+    <span class="pill pill-green">✓ ${done} done</span>
+    <span class="pill pill-blue">→ ${prog} in progress</span>
+    <span class="pill pill-amber">⏳ ${wait} awaiting</span>
+  `;
+}
+
+// ═══════════════════════════════════════════
+//  SUBMISSIONS
+// ═══════════════════════════════════════════
+
+function renderSubmissions() {
+  const subs = [...getSubmissions()].reverse();
+
+  if (subs.length === 0) {
+    document.getElementById('content').innerHTML = `
+      <div class="panel">
+        <div class="empty-state">
+          <div class="empty-icon">📭</div>
+          <p>No submissions yet.<br/>Open the Feedback Form and click <strong>Submit Feedback</strong> to save a submission here.</p>
+        </div>
+      </div>`;
+    return;
+  }
+
+  document.getElementById('content').innerHTML = `
+    <div class="section-hdr"><h2>${subs.length} Submission${subs.length !== 1 ? 's' : ''}</h2></div>
+    <div class="panel" id="sub-list">
+      ${subs.map((s, i) => subItem(s, i)).join('')}
+    </div>`;
+}
+
+function subItem(s, i) {
+  const d      = new Date(s.submittedAt);
+  const date   = d.toLocaleDateString('en-ZA', { weekday:'short', day:'2-digit', month:'long', year:'numeric' });
+  const time   = d.toLocaleTimeString('en-ZA', { hour:'2-digit', minute:'2-digit' });
+  const hasPdf = !!s.pdfBase64;
+  const isTmpl = !!s.isTemplateSnapshot;
+  const isForm = !!s.isFormSave;
+  const pills  = (isTmpl || isForm) ? '' : pillsFor(s);
+
+  const typeClass = isTmpl ? ' is-template' : isForm ? ' is-form-save' : '';
+  const icon      = isTmpl ? '✏️' : isForm ? '📋' : '📅';
+  const badge     = isTmpl
+    ? '<span class="template-badge">✏️ Template Snapshot</span>'
+    : isForm
+      ? '<span class="form-save-badge">📋 Form Save</span>'
+      : pills;
+
+  const detail = s.sections.map(sec => `
+    <div class="detail-section ds-${sec.type}">
+      <div class="detail-section-title">${escHtml(sec.label)}</div>
+      ${sec.tasks.map((t, ti) => {
+        const struck  = t.checked ? ' struck' : '';
+        const ck      = t.checked ? 'done' : 'undone';
+        const ckIcon  = t.checked ? '&#9745;' : '&#9744;';
+        const cmt     = escHtml(t.comment || '');
+        const txt     = escHtml(t.text);
+        return `
+        <div class="detail-task">
+          <div class="view-only">
+            <div class="detail-task-top">
+              <span class="detail-check ${ck}">${ckIcon}</span>
+              <span class="detail-task-text${struck}">${txt}</span>
+            </div>
+            ${t.comment ? `<div class="detail-comment-wrap"><div class="comment-display">&#128172; ${cmt}</div></div>` : ''}
+          </div>
+          <div class="edit-only">
+            <div class="detail-task-top">
+              <span class="detail-check ${ck}">${ckIcon}</span>
+              <span class="detail-task-text${struck}" contenteditable="true"
+                    id="txt-${s.id}-${sec.id}-${ti}"
+                    onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur()}">${txt}</span>
+            </div>
+            <div class="detail-comment-wrap">
+              <label>Comment / Update</label>
+              <textarea id="cmt-${s.id}-${sec.id}-${ti}" placeholder="Add a comment&#8230;">${cmt}</textarea>
+            </div>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>`).join('');
+
+  return `
+    <div class="sub-item${typeClass}" id="sub-${s.id}" data-mode="view">
+      <div class="edit-banner">&#9998; Editing &#8212; make your changes then click Save &amp; PDF</div>
+      <div class="sub-header" onclick="toggleSub('${s.id}')">
+        <span class="sub-date">${icon} ${date} <span style="font-weight:400;color:var(--muted)">${time}</span></span>
+        <span class="sub-pills">${badge}${hasPdf ? '<span class="pdf-badge" style="margin-left:6px">&#128196; PDF</span>' : ''}</span>
+        <span class="sub-expand" id="exp-${s.id}">&#8250;</span>
+      </div>
+      <div class="sub-body" id="body-${s.id}">
+        ${detail}
+        <div class="sub-actions">
+          <button class="btn-edit-sub view-only"   onclick="enterEditMode('${s.id}')">&#9998; Edit Document</button>
+          ${hasPdf ? `<button class="view-pdf-btn view-only" onclick="viewPDF('${s.id}')">&#128196; View PDF</button>` : ''}
+          ${isForm ? `<button class="btn-open-form view-only" onclick="openInForm('${s.id}')">&#128203; Open in Form</button>` : ''}
+          <button class="delete-sub-btn view-only"  onclick="deleteSub('${s.id}')">&#128465; Delete</button>
+          <button class="btn-save-edit edit-only"   onclick="saveSubmissionEdits('${s.id}')">&#128190; Save &amp; Generate PDF</button>
+          <button class="btn-cancel-edit edit-only" onclick="cancelEdit('${s.id}')">&#10005; Cancel</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+function toggleSub(id) {
+  const body = document.getElementById('body-' + id);
+  const exp  = document.getElementById('exp-' + id);
+  const open = body.classList.toggle('open');
+  exp.classList.toggle('open', open);
+}
+
+function enterEditMode(subId) {
+  document.getElementById('sub-' + subId).dataset.mode = 'edit';
+}
+
+function cancelEdit(subId) {
+  renderSubmissions();
+}
+
+function saveSubmissionEdits(subId) {
+  const subs = getSubmissions();
+  const sub  = subs.find(s => s.id === subId);
+  if (!sub) return;
+  sub.sections.forEach(sec => {
+    sec.tasks.forEach((t, ti) => {
+      const txtEl = document.getElementById(`txt-${subId}-${sec.id}-${ti}`);
+      if (txtEl) t.text = txtEl.innerText.trim();
+      const cmtEl = document.getElementById(`cmt-${subId}-${sec.id}-${ti}`);
+      if (cmtEl) t.comment = cmtEl.value;
+    });
+  });
+  const pdf = generateSubmissionPDF(sub);
+  if (pdf) sub.pdfBase64 = pdf;
+  saveSubmissions(subs);
+  renderSubmissions();
+  showToast('Saved & PDF updated.');
+}
+
+function generateSubmissionPDF(sub) {
+  if (!window.jspdf) return null;
+  const { jsPDF } = window.jspdf;
+  const doc   = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
+  const pageW = 210, margin = 18, contentW = pageW - margin * 2;
+  const today = new Date(sub.submittedAt).toLocaleDateString('en-ZA', { day:'2-digit', month:'long', year:'numeric' });
+  let y = 22;
+
+  doc.setFillColor(26, 54, 93);
+  doc.rect(0, 0, pageW, 30, 'F');
+  doc.setFontSize(16); doc.setFont('helvetica','bold'); doc.setTextColor(255,255,255);
+  doc.text('Shift Energy Solutions', pageW/2, 13, { align:'center' });
+  doc.setFontSize(9); doc.setFont('helvetica','normal');
+  const lbl = sub.isTemplateSnapshot ? 'Template Snapshot' : sub.isFormSave ? 'Form Save' : 'Feedback Report';
+  doc.text(lbl + '  |  ' + today, pageW/2, 21, { align:'center' });
+  y = 40;
+
+  const colorMap = { completed:{r:39,g:103,b:73}, inprogress:{r:43,g:108,b:176}, awaiting:{r:151,g:90,b:22} };
+  sub.sections.forEach(sec => {
+    if (y > 260) { doc.addPage(); y = 20; }
+    const {r,g,b} = colorMap[sec.type] || {r:80,g:80,b:80};
+    doc.setFillColor(r,g,b);
+    doc.rect(margin, y-4, contentW, 8, 'F');
+    doc.setFontSize(10); doc.setFont('helvetica','bold'); doc.setTextColor(255,255,255);
+    doc.text((sec.label||'').toUpperCase(), margin+3, y+1);
+    y += 11;
+    sec.tasks.forEach((t,i) => {
+      if (y > 275) { doc.addPage(); y = 20; }
+      doc.setFontSize(9);
+      const lines = doc.splitTextToSize(`  ${i+1}. [${t.checked?'x':' '}] ${t.text}`, contentW-6);
+      lines.forEach((line,li) => {
+        if (y > 275) { doc.addPage(); y = 20; }
+        doc.setFont('helvetica', t.checked&&li===0?'italic':'normal');
+        doc.setTextColor(t.checked?160:26, t.checked?174:32, t.checked?192:44);
+        doc.text(line, margin+2, y); y += 5;
+      });
+      if (t.comment) {
+        doc.setFont('helvetica','italic'); doc.setTextColor(113,128,150);
+        doc.splitTextToSize('       Comment: '+t.comment, contentW-10)
+           .forEach(l => { if(y>275){doc.addPage();y=20;} doc.text(l,margin+2,y); y+=4.5; });
+      }
+      doc.setDrawColor(226,232,240);
+      doc.line(margin+2,y,pageW-margin-2,y);
+      y += 4;
+    });
+    y += 4;
+  });
+  const pc = doc.internal.getNumberOfPages();
+  for (let p=1;p<=pc;p++) {
+    doc.setPage(p); doc.setFontSize(8); doc.setTextColor(160,174,192); doc.setFont('helvetica','normal');
+    doc.text(`Shift Energy Solutions  |  ${today}  |  Page ${p} of ${pc}`, pageW/2, 292, {align:'center'});
+  }
+  return doc.output('datauristring').split(',')[1];
+}
+
+function openInForm(subId) {
+  localStorage.setItem('ses_load_submission', subId);
+  window.open('file:///C:/Users/Natas/AppData/Roaming/Claude/local-agent-mode-sessions/09e36277-7cc8-443f-bdaa-cfe6d13e91bb/cdf4d236-0f46-4f40-ad9a-49848f4f5fb0/local_2e431098-7300-42fa-bcca-2c4ec651cc84/outputs/Feedback_Form.html', '_blank');
+}
+
+function viewPDF(subId) {
+  const sub = getSubmissions().find(s => s.id === subId);
+  if (!sub?.pdfBase64) { showToast('No PDF stored for this submission.'); return; }
+  const bytes = Uint8Array.from(atob(sub.pdfBase64), c => c.charCodeAt(0));
+  const blob  = new Blob([bytes], { type: 'application/pdf' });
+  window.open(URL.createObjectURL(blob), '_blank');
+}
+
+function deleteSub(subId) {
+  if (!confirm('Delete this submission? This cannot be undone.')) return;
+  const subs = getSubmissions().filter(s => s.id !== subId);
+  saveSubmissions(subs);
+  renderSubmissions();
+  showToast('🗑 Submission deleted.');
+}
+
+// ═══════════════════════════════════════════
+//  TEMPLATE EDITOR
+// ═══════════════════════════════════════════
+
+function renderTemplate() {
+  const tmpl = getTemplate();
+
+  document.getElementById('content').innerHTML = `
+    <p style="font-size:13px;color:var(--muted);margin-bottom:20px">
+      Edit the task list below. Changes are saved to your browser and will be picked up next time the Feedback Form is opened.
+    </p>
+    ${tmpl.sections.map(sec => renderTmplSection(sec)).join('')}
+    <div class="tmpl-actions">
+      <button class="btn-save-tmpl" onclick="saveTemplateFn()">💾 Save Template</button>
+      <button class="btn-open-form" onclick="openFeedbackForm()">📋 Open Feedback Form</button>
+      <button class="btn-reset-tmpl" onclick="resetTemplate()">↺ Reset to Default</button>
+    </div>
+  `;
+}
+
+function renderTmplSection(sec) {
+  const cls = sec.type;
+  const tasks = sec.tasks.map((t, i) => `
+    <div class="tmpl-task-row" id="tr-${sec.id}-${i}">
+      <input class="tmpl-task-input" id="ti-${sec.id}-${i}" value="${escHtml(t)}" placeholder="Task description…" />
+      <button class="btn-del-task" onclick="delTask('${sec.id}', ${i})" title="Remove task">×</button>
+    </div>`).join('');
+
+  return `
+    <div class="tmpl-section" id="tsec-${sec.id}">
+      <div class="tmpl-section-hdr ${cls}">
+        <span>${sec.icon}</span> ${escHtml(sec.label)}
+      </div>
+      <div class="tmpl-tasks" id="tasks-${sec.id}">
+        ${tasks}
+        <button class="btn-add-task" onclick="addTask('${sec.id}')">＋ Add task</button>
+      </div>
+    </div>`;
+}
+
+function collectTemplate() {
+  const tmpl = getTemplate();
+  tmpl.sections.forEach(sec => {
+    const inputs = document.querySelectorAll(`[id^="ti-${sec.id}-"]`);
+    sec.tasks = Array.from(inputs).map(inp => inp.value.trim()).filter(Boolean);
+  });
+  return tmpl;
+}
+
+function saveTemplateFn() {
+  const tmpl = collectTemplate();
+  saveTemplate(tmpl);
+  generateTemplatePDFAndSubmission(tmpl);
+  showToast('✅ Template saved — document added to Submissions.');
+}
+
+function generateTemplatePDFAndSubmission(tmpl) {
+  if (!window.jspdf) { createTemplateSubmission(tmpl, null); return; }
+
+  const { jsPDF } = window.jspdf;
+  const doc      = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const pageW    = 210, margin = 18, contentW = pageW - margin * 2;
+  const today    = new Date().toLocaleDateString('en-ZA', { day:'2-digit', month:'long', year:'numeric' });
+  let y          = 22;
+
+  // ── Header banner ──
+  doc.setFillColor(26, 54, 93);
+  doc.rect(0, 0, pageW, 30, 'F');
+  doc.setFontSize(16); doc.setFont('helvetica','bold'); doc.setTextColor(255,255,255);
+  doc.text('Shift Energy Solutions', pageW/2, 13, { align:'center' });
+  doc.setFontSize(9); doc.setFont('helvetica','normal');
+  doc.text('Template Snapshot  ·  ' + today, pageW/2, 21, { align:'center' });
+  y = 40;
+
+  // Purple template marker
+  doc.setFillColor(128, 90, 213);
+  doc.rect(margin, y - 4, contentW, 7, 'F');
+  doc.setFontSize(9); doc.setFont('helvetica','bold'); doc.setTextColor(255,255,255);
+  doc.text('✏  SAVED TEMPLATE SNAPSHOT', margin + 3, y);
+  y += 11;
+
+  const colorMap = {
+    completed:  { r:39,  g:103, b:73  },
+    inprogress: { r:43,  g:108, b:176 },
+    awaiting:   { r:151, g:90,  b:22  }
+  };
+
+  const labelMap = {
+    completed:  'COMPLETED TASKS',
+    inprogress: 'IN-PROGRESS TASKS',
+    awaiting:   'AWAITING FEEDBACK / APPROVAL'
+  };
+
+  tmpl.sections.forEach(sec => {
+    if (y > 260) { doc.addPage(); y = 20; }
+    const { r, g, b } = colorMap[sec.type] || { r:100, g:100, b:100 };
+
+    doc.setFillColor(r, g, b);
+    doc.rect(margin, y - 4, contentW, 8, 'F');
+    doc.setFontSize(10); doc.setFont('helvetica','bold'); doc.setTextColor(255,255,255);
+    doc.text(labelMap[sec.type] || sec.label.toUpperCase(), margin + 3, y + 1);
+    y += 11;
+
+    sec.tasks.forEach((task, i) => {
+      if (y > 275) { doc.addPage(); y = 20; }
+      doc.setFontSize(9); doc.setFont('helvetica','normal'); doc.setTextColor(26,32,44);
+      const lines = doc.splitTextToSize(`  ${i+1}. [ ] ${task}`, contentW - 6);
+      lines.forEach(line => {
+        if (y > 275) { doc.addPage(); y = 20; }
+        doc.text(line, margin + 2, y); y += 5;
+      });
+      doc.setDrawColor(226,232,240);
+      doc.line(margin+2, y, pageW-margin-2, y);
+      y += 4;
+    });
+    y += 4;
+  });
+
+  // Footers
+  const pageCount = doc.internal.getNumberOfPages();
+  for (let p = 1; p <= pageCount; p++) {
+    doc.setPage(p);
+    doc.setFontSize(8); doc.setTextColor(160,174,192); doc.setFont('helvetica','normal');
+    doc.text(`Shift Energy Solutions  |  Template Snapshot  |  ${today}  |  Page ${p} of ${pageCount}`, pageW/2, 292, { align:'center' });
+  }
+
+  const pdfBase64 = doc.output('datauristring').split(',')[1];
+  createTemplateSubmission(tmpl, pdfBase64);
+}
+
+function createTemplateSubmission(tmpl, pdfBase64) {
+  try {
+    const subs = JSON.parse(localStorage.getItem('ses_submissions') || '[]');
+    const sub  = {
+      id:                 Date.now().toString(36) + Math.random().toString(36).slice(2,6),
+      submittedAt:        new Date().toISOString(),
+      isTemplateSnapshot: true,
+      sections: tmpl.sections.map(sec => ({
+        id:    sec.id,
+        type:  sec.type,
+        label: sec.label,
+        tasks: sec.tasks.map(t => ({
+          text:    t,
+          checked: sec.type === 'completed',
+          comment: ''
+        }))
+      }))
+    };
+    if (pdfBase64) sub.pdfBase64 = pdfBase64;
+    subs.push(sub);
+    localStorage.setItem('ses_submissions', JSON.stringify(subs));
+  } catch(e) {}
+}
+
+function resetTemplate() {
+  if (!confirm('Reset to the default template? Your edits will be lost.')) return;
+  saveTemplate(DEFAULT_TEMPLATE);
+  renderTemplate();
+  showToast('↺ Template reset to default.');
+}
+
+function addTask(secId) {
+  const tmpl = collectTemplate();
+  const sec  = tmpl.sections.find(s => s.id === secId);
+  if (sec) sec.tasks.push('');
+  saveTemplate(tmpl);
+  renderTemplate();
+  // focus new input
+  const inputs = document.querySelectorAll(`[id^="ti-${secId}-"]`);
+  if (inputs.length) inputs[inputs.length - 1].focus();
+}
+
+function openFeedbackForm() {
+  saveTemplateFn();
+  window.open('file:///C:/Users/Natas/AppData/Roaming/Claude/local-agent-mode-sessions/09e36277-7cc8-443f-bdaa-cfe6d13e91bb/cdf4d236-0f46-4f40-ad9a-49848f4f5fb0/local_2e431098-7300-42fa-bcca-2c4ec651cc84/outputs/Feedback_Form.html', '_blank');
+}
+
+function delTask(secId, idx) {
+  const tmpl = collectTemplate();
+  const sec  = tmpl.sections.find(s => s.id === secId);
+  if (sec) sec.tasks.splice(idx, 1);
+  saveTemplate(tmpl);
+  renderTemplate();
+}
+
+// ═══════════════════════════════════════════
+//  UTILS
+// ═══════════════════════════════════════════
+
+function escHtml(str) {
+  return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function showToast(msg, ms = 3500) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.display = 'block';
+  clearTimeout(t._to);
+  t._to = setTimeout(() => { t.style.display = 'none'; }, ms);
+}
+
+// ═══════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════
+
+document.getElementById('topbar-date').textContent = new Date().toLocaleDateString('en-ZA', { weekday:'long', day:'2-digit', month:'long', year:'numeric' });
+showView('overview');
+</script>
+</body>
+</html>

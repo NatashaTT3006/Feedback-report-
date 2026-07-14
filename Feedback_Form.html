@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Shift Energy Solutions – Feedback Form</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #f0f4f8;
+      color: #1a202c;
+      padding: 32px 16px;
+    }
+
+    .container { max-width: 820px; margin: 0 auto; }
+
+    header { text-align: center; margin-bottom: 36px; }
+    header h1 { font-size: 26px; font-weight: 700; color: #1a365d; }
+    header p  { color: #718096; margin-top: 6px; font-size: 14px; }
+
+    .section {
+      background: #fff;
+      border-radius: 12px;
+      padding: 24px 28px;
+      margin-bottom: 28px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    }
+
+    .section-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 17px;
+      font-weight: 700;
+      margin-bottom: 20px;
+      padding-bottom: 12px;
+      border-bottom: 2px solid;
+    }
+
+    .section-title .badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 26px; height: 26px;
+      border-radius: 50%;
+      font-size: 13px;
+      color: #fff;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    .completed .section-title  { border-color: #38a169; color: #276749; }
+    .completed .badge          { background: #38a169; }
+    .completed .task-row:hover { background: #f0fff4; }
+
+    .inprogress .section-title  { border-color: #3182ce; color: #2b6cb0; }
+    .inprogress .badge          { background: #3182ce; }
+    .inprogress .task-row:hover { background: #ebf8ff; }
+
+    .awaiting .section-title  { border-color: #d69e2e; color: #975a16; }
+    .awaiting .badge          { background: #d69e2e; }
+    .awaiting .task-row:hover { background: #fffff0; }
+
+    .task-row {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 12px 10px;
+      border-radius: 8px;
+      margin-bottom: 6px;
+      transition: background 0.15s;
+    }
+
+    .task-top {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+    }
+
+    .task-label {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      flex: 1;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    input[type="checkbox"] {
+      width: 18px; height: 18px;
+      flex-shrink: 0;
+      margin-top: 2px;
+      accent-color: #38a169;
+      cursor: pointer;
+    }
+
+    .task-text {
+      flex: 1;
+      outline: none;
+      border-radius: 4px;
+      padding: 1px 4px;
+      margin: -1px -4px;
+      transition: background 0.15s, box-shadow 0.15s;
+      cursor: text;
+      word-break: break-word;
+    }
+
+    .task-text:hover { background: rgba(0,0,0,0.04); }
+    .task-text:focus { background: #fff; box-shadow: 0 0 0 2px #3182ce55; }
+
+    .completed-text { text-decoration: line-through; color: #a0aec0; }
+    .task-text.completed-text { text-decoration: line-through; color: #a0aec0; }
+
+    .comment-area {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      padding-left: 28px;
+    }
+
+    .comment-area label { font-size: 12px; color: #718096; font-weight: 600; }
+
+    .comment-area textarea {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      font-size: 13px;
+      font-family: inherit;
+      resize: vertical;
+      min-height: 60px;
+      color: #2d3748;
+      background: #f7fafc;
+      transition: border-color 0.15s;
+    }
+
+    .comment-area textarea:focus { outline: none; border-color: #3182ce; background: #fff; }
+
+    .status-tag {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 20px;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .tag-done     { background: #c6f6d5; color: #276749; }
+    .tag-waiting  { background: #fefcbf; color: #744210; }
+    .tag-progress { background: #bee3f8; color: #2a4365; }
+
+    .submit-wrap {
+      text-align: center;
+      margin-top: 8px;
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .btn-pdf {
+      background: #fff; color: #276749;
+      border: 2px solid #38a169;
+      padding: 13px 24px; border-radius: 8px;
+      font-size: 15px; font-weight: 600;
+      cursor: pointer; transition: background 0.2s;
+    }
+    .btn-pdf:hover { background: #f0fff4; }
+
+    .btn-share {
+      background: #fff; color: #1a365d;
+      border: 2px solid #1a365d;
+      padding: 13px 28px; border-radius: 8px;
+      font-size: 15px; font-weight: 600;
+      cursor: pointer; transition: background 0.2s;
+    }
+    .btn-share:hover { background: #ebf4ff; }
+
+    .btn-save-dash {
+      background: #3182ce; color: #fff;
+      border: none;
+      padding: 13px 26px; border-radius: 8px;
+      font-size: 15px; font-weight: 600;
+      cursor: pointer; transition: background 0.2s;
+    }
+    .btn-save-dash:hover { background: #2b6cb0; }
+
+    .load-banner {
+      display: none;
+      background: #bee3f8;
+      border: 1px solid #3182ce;
+      border-radius: 8px;
+      padding: 10px 16px;
+      margin-bottom: 20px;
+      font-size: 13px;
+      color: #2b6cb0;
+      font-weight: 600;
+      text-align: center;
+    }
+
+    /* ── Mobile ── */
+    @media (max-width: 600px) {
+      body { padding: 16px 10px; }
+
+      header h1 { font-size: 20px; }
+      header p  { font-size: 12px; }
+
+      .section { padding: 16px 14px; margin-bottom: 18px; }
+      .section-title { font-size: 15px; margin-bottom: 14px; }
+
+      .task-row { padding: 10px 6px; }
+      .task-label { font-size: 13px; }
+
+      .comment-area textarea { min-height: 50px; font-size: 13px; }
+
+      .submit-wrap { flex-direction: column; gap: 10px; }
+      .btn-pdf, .btn-share {
+        width: 100%;
+        padding: 13px 16px;
+        font-size: 15px;
+      }
+
+      .status-tag { font-size: 10px; padding: 2px 6px; }
+    }
+
+    /* ── Print / PDF ── */
+    @media print {
+      body { background: #fff; padding: 16px; }
+      .submit-wrap { display: none !important; }
+      .section { box-shadow: none; border: 1px solid #e2e8f0; page-break-inside: avoid; }
+      .comment-area textarea { display: none !important; }
+      .comment-value { display: block !important; font-size: 13px; color: #4a5568; padding-left: 28px; font-style: italic; }
+    }
+
+    .comment-value { display: none; }
+
+    #toast {
+      display: none;
+      position: fixed;
+      bottom: 30px; left: 50%;
+      transform: translateX(-50%);
+      background: #276749; color: #fff;
+      padding: 12px 28px;
+      border-radius: 8px;
+      font-size: 14px; font-weight: 600;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      z-index: 999;
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <h1>Shift Energy Solutions</h1>
+    <p id="form-date">Weekly Task Feedback Form</p>
+  </header>
+
+  <div class="load-banner" id="loadBanner">📋 Loaded from a saved form — edit and re-save to Dashboard when done.</div>
+
+  <form id="feedbackForm">
+    <!-- Sections rendered dynamically from localStorage template -->
+    <div class="section completed" id="section-completed">
+      <div class="section-title"><span class="badge">✓</span> Completed Tasks</div>
+      <div id="tasks-completed"></div>
+    </div>
+
+    <div class="section inprogress" id="section-inprogress">
+      <div class="section-title"><span class="badge">→</span> In-Progress Tasks</div>
+      <div id="tasks-inprogress"></div>
+    </div>
+
+    <div class="section awaiting" id="section-awaiting">
+      <div class="section-title"><span class="badge">⏳</span> Awaiting Feedback / Approval</div>
+      <div id="tasks-awaiting"></div>
+    </div>
+
+    <div class="submit-wrap">
+      <button type="button" class="btn-save-dash" onclick="saveToDashboard()">💾 Save to Dashboard</button>
+      <button type="button" class="btn-pdf"       onclick="downloadPDF()">📄 Download PDF</button>
+      <button type="button" class="btn-share"     onclick="copyLink()">🔗 Copy Shareable Link</button>
+    </div>
+  </form>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════
+//  DEFAULT TEMPLATE (mirrors dashboard)
+// ═══════════════════════════════════════════
+const DEFAULT_TEMPLATE = {
+  sections: [
+    {
+      id: 'completed', type: 'completed', label: 'Completed Tasks', icon: '✓',
+      tasks: [
+        'Fuel card Investec – Completed and Sent',
+        'SCA – INV-SES-009 – Email missing Timesheet breakdown and updated supporting doc',
+        'SCA – Updated invoices and Timesheet breakdowns May uploaded to SharePoint',
+        'Meeting confirmed with Xact for Thursday – Prep completed',
+        'Arrange meeting with Trisha re admin tasks – Discussed; Trisha to share additional points for Zeno Monday meeting',
+        'Bank links XERO – Main accounts complete',
+        'Updated Shift cashflow with updated invoices and expenses',
+        'Cotton Crew orders for new clients – Discussion with Marcelle completed'
+      ]
+    },
+    {
+      id: 'inprogress', type: 'inprogress', label: 'In-Progress Tasks', icon: '→',
+      tasks: [
+        'Review Expense sheet with Trisha & prep payment load for ZG – Completed; awaiting comms re transfer of funds issue from Trisha',
+        'Contact Michael Rusby – Compile requested info for Zeno income for Michael',
+        'Creation of 3 x loan accounts in XERO',
+        'Allocations of transactions in XERO – Ongoing task',
+        'Transaction list – Bank account sorting and discussing with Trisha – Ongoing task',
+        'Import all invoices in XERO – Ongoing task',
+        'Knightbridge new bank detail letter query – Took over from Trisha; communicating updated info directly'
+      ]
+    },
+    {
+      id: 'awaiting', type: 'awaiting', label: 'Awaiting Feedback / Approval', icon: '⏳',
+      tasks: [
+        'SCA – INV-SES-0013 – Sent; awaiting feedback from Salman',
+        'Beneficiary enquiry awaiting feedback – Matthew assisting with request',
+        'Request contact info for franchise & Corp for SOP – Corp emails received; awaiting franchise emails',
+        'SOP doc update x 2 – The Cotton Crew – Awaiting Zeno update on doc',
+        'Printer pricing for 19 Beach – Incredible Connection or Makro (priced at R5,500) – Awaiting Zeno approval & payment',
+        'Courier Guy integration with Shopify for Roxanne – Wayne started integration per Marcelle; awaiting further instruction from Wayne',
+        'Meeting request with Dallen (accounts@zar) – Discuss missing invoices, queries and additional information',
+        'Vehicle payment (loan repayment / TAX obligations) – Awaiting Labia and Matthew response',
+        'Missing Investec account from Dash (Zeno personal account) – Awaiting Matthew feedback'
+      ]
+    }
+  ]
+};
+
+// ═══════════════════════════════════════════
+//  BUILD FORM FROM TEMPLATE
+// ═══════════════════════════════════════════
+function getTemplate() {
+  try { return JSON.parse(localStorage.getItem('ses_template')) || DEFAULT_TEMPLATE; }
+  catch { return DEFAULT_TEMPLATE; }
+}
+
+function escHtml(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function buildTaskRow(taskText, type) {
+  const isCompleted = type === 'completed';
+  const tagClass    = isCompleted ? 'tag-done'     : type === 'inprogress' ? 'tag-progress' : 'tag-waiting';
+  const tagLabel    = isCompleted ? 'Done'         : type === 'inprogress' ? 'In Progress'  : 'Awaiting';
+  const checked     = isCompleted ? ' checked'     : '';
+  const struck      = isCompleted ? ' completed-text' : '';
+  const comment     = isCompleted ? '' : `
+      <div class="comment-area">
+        <label>Comment / Update</label>
+        <textarea placeholder="Add a comment or update…"></textarea>
+        <div class="comment-value"></div>
+      </div>`;
+
+  return `
+    <div class="task-row">
+      <div class="task-top">
+        <label class="task-label">
+          <input type="checkbox"${checked} />
+          <span class="task-text${struck}" contenteditable="true">${escHtml(taskText)}</span>
+        </label>
+        <span class="status-tag ${tagClass}">${tagLabel}</span>
+      </div>${comment}
+    </div>`;
+}
+
+function buildForm() {
+  const tmpl = getTemplate();
+  tmpl.sections.forEach(sec => {
+    const container = document.getElementById('tasks-' + sec.id);
+    if (!container) return;
+    container.innerHTML = sec.tasks.map(t => buildTaskRow(t, sec.type)).join('');
+  });
+
+  // Wire up Enter key prevention on contenteditable spans
+  document.querySelectorAll('.task-text').forEach(el => {
+    el.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); el.blur(); } });
+  });
+
+  // Wire up textarea sync for print
+  document.querySelectorAll('.comment-area textarea').forEach(ta => {
+    ta.addEventListener('input', () => syncCommentValue(ta));
+  });
+
+  // Completed: toggle strikethrough on uncheck
+  document.querySelectorAll('.completed input[type="checkbox"]').forEach(cb => {
+    cb.addEventListener('change', function () {
+      this.closest('.task-label').querySelector('.task-text').classList.toggle('completed-text', this.checked);
+    });
+  });
+
+  // In-progress / awaiting: toggle strikethrough + status tag
+  document.querySelectorAll('.inprogress input[type="checkbox"], .awaiting input[type="checkbox"]').forEach(cb => {
+    cb.addEventListener('change', function () {
+      const txt = this.closest('.task-label').querySelector('.task-text');
+      txt.classList.toggle('completed-text', this.checked);
+      const tag = this.closest('.task-row').querySelector('.status-tag');
+      if (this.checked) {
+        tag.textContent = 'Done'; tag.className = 'status-tag tag-done';
+      } else {
+        const aw = !!this.closest('.awaiting');
+        tag.textContent = aw ? 'Awaiting' : 'In Progress';
+        tag.className   = 'status-tag ' + (aw ? 'tag-waiting' : 'tag-progress');
+      }
+    });
+  });
+}
+
+// ═══════════════════════════════════════════
+//  UTILITIES
+// ═══════════════════════════════════════════
+function syncCommentValue(ta) {
+  const div = ta.nextElementSibling;
+  if (div && div.classList.contains('comment-value'))
+    div.textContent = ta.value ? 'Comment: ' + ta.value : '';
+}
+
+function collectFormData() {
+  return ['completed','inprogress','awaiting'].map(type => {
+    const labels = { completed: 'Completed Tasks', inprogress: 'In-Progress Tasks', awaiting: 'Awaiting Feedback / Approval' };
+    const rows   = document.querySelectorAll('.' + type + ' .task-row');
+    return {
+      id: type, type, label: labels[type],
+      tasks: Array.from(rows).map(row => ({
+        text:    (row.querySelector('.task-text')?.innerText || '').trim(),
+        checked: row.querySelector('input[type="checkbox"]')?.checked || false,
+        comment: row.querySelector('textarea')?.value || ''
+      }))
+    };
+  });
+}
+
+function saveToLocalStorage(pdfBase64) {
+  try {
+    const subs = JSON.parse(localStorage.getItem('ses_submissions') || '[]');
+    const sub  = {
+      id:          Date.now().toString(36) + Math.random().toString(36).slice(2,6),
+      submittedAt: new Date().toISOString(),
+      sections:    collectFormData()
+    };
+    if (pdfBase64) sub.pdfBase64 = pdfBase64;
+    subs.push(sub);
+    localStorage.setItem('ses_submissions', JSON.stringify(subs));
+  } catch(e) {}
+}
+
+// ── Save current form to Dashboard as a form-save document ──
+function saveToDashboard() {
+  try {
+    const subs = JSON.parse(localStorage.getItem('ses_submissions') || '[]');
+    subs.push({
+      id:          Date.now().toString(36) + Math.random().toString(36).slice(2,6),
+      submittedAt: new Date().toISOString(),
+      isFormSave:  true,
+      sections:    collectFormData()
+    });
+    localStorage.setItem('ses_submissions', JSON.stringify(subs));
+    showToast('💾 Saved to Dashboard — open it from Submissions to continue editing.');
+  } catch(e) { showToast('Could not save — localStorage unavailable.'); }
+}
+
+// ── Pre-fill form from a saved submission (opened via Open in Form) ──
+function loadSubmissionIntoForm(sub) {
+  sub.sections.forEach(sec => {
+    const rows = document.querySelectorAll('.' + sec.id + ' .task-row');
+    sec.tasks.forEach((t, i) => {
+      const row = rows[i];
+      if (!row) return;
+      const txtEl = row.querySelector('.task-text');
+      if (txtEl) txtEl.innerText = t.text;
+      const cb = row.querySelector('input[type="checkbox"]');
+      if (cb) {
+        cb.checked = t.checked;
+        // Trigger visual update
+        cb.dispatchEvent(new Event('change'));
+      }
+      const ta = row.querySelector('textarea');
+      if (ta && t.comment) { ta.value = t.comment; syncCommentValue(ta); }
+    });
+  });
+}
+
+function downloadPDF() {
+  if (!window.jspdf) { showToast('⏳ PDF library loading, please try again…'); return; }
+
+  const { jsPDF } = window.jspdf;
+  const doc      = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const pageW    = 210, margin = 18, contentW = pageW - margin * 2;
+  const today    = new Date().toLocaleDateString('en-ZA', { day:'2-digit', month:'long', year:'numeric' });
+  let y          = 22;
+
+  // ── Header banner ──
+  doc.setFillColor(26, 54, 93);
+  doc.rect(0, 0, pageW, 30, 'F');
+  doc.setFontSize(16); doc.setFont('helvetica','bold'); doc.setTextColor(255,255,255);
+  doc.text('Shift Energy Solutions', pageW/2, 13, { align:'center' });
+  doc.setFontSize(9); doc.setFont('helvetica','normal');
+  doc.text('Weekly Task Feedback Form  ·  ' + today, pageW/2, 21, { align:'center' });
+  y = 40;
+
+  const sectionDefs = [
+    { type:'completed',  label:'COMPLETED TASKS',               r:39,  g:103, b:73  },
+    { type:'inprogress', label:'IN-PROGRESS TASKS',             r:43,  g:108, b:176 },
+    { type:'awaiting',   label:'AWAITING FEEDBACK / APPROVAL',  r:151, g:90,  b:22  }
+  ];
+
+  sectionDefs.forEach(({ type, label, r, g, b }) => {
+    if (y > 260) { doc.addPage(); y = 20; }
+
+    // Section colour bar
+    doc.setFillColor(r, g, b);
+    doc.rect(margin, y - 4, contentW, 8, 'F');
+    doc.setFontSize(10); doc.setFont('helvetica','bold'); doc.setTextColor(255,255,255);
+    doc.text(label, margin + 3, y + 1);
+    y += 11;
+
+    document.querySelectorAll('.' + type + ' .task-row').forEach((row, i) => {
+      if (y > 270) { doc.addPage(); y = 20; }
+
+      const text    = (row.querySelector('.task-text')?.innerText || '').trim();
+      const checked = row.querySelector('input[type="checkbox"]')?.checked || false;
+      const comment = (row.querySelector('textarea')?.value || '').trim();
+
+      doc.setFontSize(9);
+      const tick  = checked ? '[x]' : '[ ]';
+      const lines = doc.splitTextToSize(`  ${i+1}. ${tick} ${text}`, contentW - 6);
+      lines.forEach((line, li) => {
+        if (y > 275) { doc.addPage(); y = 20; }
+        doc.setFont('helvetica', (checked && li === 0) ? 'italic' : 'normal');
+        doc.setTextColor(checked ? 160 : 26, checked ? 174 : 32, checked ? 192 : 44);
+        doc.text(line, margin + 2, y);
+        y += 5;
+      });
+
+      if (comment) {
+        if (y > 275) { doc.addPage(); y = 20; }
+        doc.setFont('helvetica','italic'); doc.setTextColor(113,128,150);
+        doc.splitTextToSize('       Comment: ' + comment, contentW - 10)
+           .forEach(l => { if (y > 275) { doc.addPage(); y = 20; } doc.text(l, margin+2, y); y += 4.5; });
+      }
+
+      doc.setDrawColor(226,232,240);
+      doc.line(margin+2, y, pageW-margin-2, y);
+      y += 4;
+    });
+    y += 4;
+  });
+
+  // ── Page footers ──
+  const pageCount = doc.internal.getNumberOfPages();
+  for (let p = 1; p <= pageCount; p++) {
+    doc.setPage(p);
+    doc.setFontSize(8); doc.setTextColor(160,174,192); doc.setFont('helvetica','normal');
+    doc.text(`Shift Energy Solutions  |  ${today}  |  Page ${p} of ${pageCount}`, pageW/2, 292, { align:'center' });
+  }
+
+  // Save base64 into localStorage submission
+  const pdfBase64 = doc.output('datauristring').split(',')[1];
+  saveToLocalStorage(pdfBase64);
+
+  // Trigger download
+  const filename = 'SES_Feedback_' + today.replace(/\s+/g,'_') + '.pdf';
+  doc.save(filename);
+  showToast('📄 PDF downloaded & saved to Dashboard.');
+}
+
+function copyLink() {
+  document.querySelectorAll('textarea').forEach(ta => ta.setAttribute('data-value', ta.value));
+  document.querySelectorAll('input[type="checkbox"]').forEach(cb =>
+    cb.checked ? cb.setAttribute('checked','') : cb.removeAttribute('checked'));
+
+  const restore = `<script>document.addEventListener('DOMContentLoaded',function(){
+    document.querySelectorAll('textarea[data-value]').forEach(function(ta){ta.value=ta.getAttribute('data-value')||'';});
+  });<\/script>`;
+
+  const html    = '<!DOCTYPE html>\n' + document.documentElement.outerHTML.replace('</body>', restore + '\n</body>');
+  const dataUrl = 'data:text/html;charset=utf-8,' + encodeURIComponent(html);
+
+  navigator.clipboard.writeText(dataUrl).then(() => {
+    showToast('🔗 Shareable link copied!');
+  }).catch(() => {
+    const blob = new Blob([html], { type: 'text/html' });
+    window.open(URL.createObjectURL(blob), '_blank');
+    showToast('🔗 Form opened in new tab — copy the address bar link.');
+  });
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.style.display = 'block';
+  clearTimeout(t._to);
+  t._to = setTimeout(() => { t.style.display = 'none'; }, 4000);
+}
+
+// ═══════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════
+document.getElementById('form-date').textContent =
+  'Weekly Task Feedback Form · ' +
+  new Date().toLocaleDateString('en-ZA', { day:'2-digit', month:'long', year:'numeric' });
+
+buildForm();
+
+// Check if dashboard sent us a submission to pre-load
+try {
+  const loadId = localStorage.getItem('ses_load_submission');
+  if (loadId) {
+    localStorage.removeItem('ses_load_submission');
+    const subs = JSON.parse(localStorage.getItem('ses_submissions') || '[]');
+    const sub  = subs.find(s => s.id === loadId);
+    if (sub) {
+      loadSubmissionIntoForm(sub);
+      document.getElementById('loadBanner').style.display = 'block';
+    }
+  }
+} catch(e) {}
+</script>
+</body>
+</html>
